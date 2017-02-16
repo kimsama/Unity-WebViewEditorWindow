@@ -4,7 +4,7 @@ using UnityEditor;
 public class ExampleWindow : CustomWebViewEditorWindow
 {
 
-    [MenuItem("Window / Example")]
+    [MenuItem("Window/Example01")]
     static void Open()
     {
         CreateWebViewEditorWindow<ExampleWindow>(
