@@ -33,10 +33,14 @@ public class CustomWebViewEditorWindow
 
     static Type GetType(string typeName, string assemblyName)
     {
+#if UNITY_5_4_OR_NEWER
         return Assembly.Load(assemblyName).GetType(typeName);
+#else
+        return Types.GetType(typeName, assemblyName);
+#endif
     }
 
-	const string PATH = "Temp/webViewEditorWindowNames.txt";
+    const string PATH = "Temp/webViewEditorWindowNames.txt";
 
 	[InitializeOnLoadMethod]
 	static void AddGlobalObjects ()
