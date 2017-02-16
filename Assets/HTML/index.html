@@ -1,0 +1,32 @@
+<html> 
+  <head> 
+    <meta charset="UTF-8"> 
+  </head> 
+  <body  style = "background-color : gray" > 
+    <button  onclick = "sendMessage ('Play')" > Play </button > 
+    <button  onclick = "sendMessage ('Pause')" > Pause </button> 
+    <button  onclick = "sendMessage ('Step')" > Step </button> 
+    <script type = "text/javascript" > 
+
+      function sendMessage ( method )  
+      { 
+          unityAsync ({ 
+            className : "window.webScriptObject" , 
+            funcName : "ProcessMessage", 
+            funcArgs : [JSON.stringify ({ 
+                    type : "INVOKE", 
+                    messageID : 1, 
+                    version : "0", 
+                    reference : "ExampleWindow", 
+                    destination : "ExampleWindow", 
+                    method :  method, 
+                    params : [] 
+                })], 
+            onSuccess : function ( a )  { 
+                console.log ( "returnValue : "  +  a ) 
+            }
+          }) 
+      } 
+    </script> 
+  </body > 
+</html>
