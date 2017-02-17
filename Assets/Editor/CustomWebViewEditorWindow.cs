@@ -104,6 +104,10 @@ public class CustomWebViewEditorWindow
         }
 	}
 
+    /// <summary>
+    /// InvokeJSMethod can not be called on Unity 5.5.x (seems to same on Unity 5.4.x)
+    /// See the issue for the reason.
+    /// </summary>
 	public void InvokeJSMethod (string objectName, string name, params object[] args)
 	{
         var invokeJSMethodMethod = webViewEditorWindowType.GetMethod ("InvokeJSMethod", BindingFlags.NonPublic | BindingFlags.Instance);
