@@ -4,10 +4,16 @@ using UnityEditor;
 using System.Reflection;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
-public class CustomWebViewEditorWindow
+/// <summary>
+/// Open a WebViewEditorWindowTabs like AssetStore editor window.
+/// </summary>
+public class CustomWebViewEditorWindow 
 {
 	private object webViewEditorWindow = null;
+
+    static object webView;
 
 	static Type webViewEditorWindowType {
 		get {
@@ -71,18 +77,14 @@ public class CustomWebViewEditorWindow
 			maxHeight
 		});
 
-
-		var customWebEditorWindow = new T {
-			webViewEditorWindow = window
-		};
+		var customWebEditorWindow = new T { webViewEditorWindow = window };
 
 		EditorApplication.delayCall += () => {
 			EditorApplication.delayCall += () => {
-				var webView = webViewEditorWindowType.GetField ("m_WebView", BindingFlags.NonPublic | BindingFlags.Instance).GetValue (customWebEditorWindow.webViewEditorWindow);
+				webView = webViewEditorWindowType.GetField ("m_WebView", BindingFlags.NonPublic | BindingFlags.Instance).GetValue (customWebEditorWindow.webViewEditorWindow);
 				AddGlobalObject<T> ();
 			};
 		};
-
 
 		return customWebEditorWindow;
 	}
@@ -108,14 +110,91 @@ public class CustomWebViewEditorWindow
     /// InvokeJSMethod can not be called on Unity 5.5.x (seems to same on Unity 5.4.x)
     /// See the issue for the reason.
     /// </summary>
-	public void InvokeJSMethod (string objectName, string name, params object[] args)
+	public void InvokeJSMethod (string objectName, string funcName, params object[] args)
 	{
+#if UNITY_5_4_OR_NEWER
+        try
+        {
+            if (webViewEditorWindow != null && webView != null)
+            {
+                MethodInfo invokeJSMethod = webView.GetType().GetMethod("ExecuteJavascript");
+                if (invokeJSMethod != null)
+                {
+                    object[] param = new object[] {PrepareJSMethod(objectName, funcName, args)};
+                    invokeJSMethod.Invoke(webView, param);
+                }
+            }
+        }
+        catch (TargetInvocationException ex)
+        {
+            //FIXME: exception raise whenever the WebViewEditorWindowTabs window is closed.
+
+            // should be set as null to open the editor window again.
+            webView = null;
+            // force stop calling the delegate even after closing the window.
+            EditorApplication.update = null;    
+            Debug.LogFormat("{0}", ex.Message);
+            return;
+        }        
+#else
         var invokeJSMethodMethod = webViewEditorWindowType.GetMethod ("InvokeJSMethod", BindingFlags.NonPublic | BindingFlags.Instance);
         if (invokeJSMethodMethod != null)
         {
-            invokeJSMethodMethod.Invoke(webViewEditorWindow, new object[] { objectName, name, args });
+            invokeJSMethodMethod.Invoke(webViewEditorWindow, new object[] { objectName, funcName, args });
         }
         else
-            Debug.LogError("No InvokeJSMethod is found.");
-	}
+            Debug.LogErrorFormat("No {0}.{1} is found.", objectName, funcName);
+#endif
+
+    }
+
+    public static string PrepareJSMethod(string objectName, string name, params object[] args)
+    {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.Append(objectName);
+        stringBuilder.Append('.');
+        stringBuilder.Append(name);
+        stringBuilder.Append('(');
+        bool flag = true;
+        for (int i = 0; i < args.Length; i++)
+        {
+            object obj = args[i];
+            if (!flag)
+            {
+                stringBuilder.Append(',');
+            }
+            bool flag2 = obj is string;
+            if (flag2)
+            {
+                stringBuilder.Append('"');
+            }
+            stringBuilder.Append(obj);
+            if (flag2)
+            {
+                stringBuilder.Append('"');
+            }
+            flag = false;
+        }
+        stringBuilder.Append(");");
+        return stringBuilder.ToString();
+
+    }
+
+    public static Type GetTypeFromAllAssemblies(string typeName)
+    {
+        Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+        foreach (Assembly assembly in assemblies)
+        {
+            Type[] types = assembly.GetTypes();
+            foreach (Type type in types)
+            {
+                if (type.Name.Equals(typeName, StringComparison.CurrentCultureIgnoreCase) ||
+                    type.Name.Contains('+' + typeName)) //+ check for inline classes
+                    return type;
+            }
+        }
+        return null;
+
+    }
+
 }
